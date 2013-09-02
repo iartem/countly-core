@@ -37,7 +37,14 @@ var common = {},
     };
 
     var connectionString = (typeof countlyConfig.mongodb === "string")? countlyConfig.mongodb : (countlyConfig.mongodb.host + ':' + countlyConfig.mongodb.port + '/' + countlyConfig.mongodb.db + '?auto_reconnect=true');
-    common.db = mongo.db(connectionString, {safe:false, maxPoolSize: countlyConfig.mongodb.max_pool_size || 1000});
+    var connectionOptions = {
+        safe:false,
+        maxPoolSize: countlyConfig.mongodb.max_pool_size || 1000,
+        username: countlyConfig.mongodb.username || '',
+        password: countlyConfig.mongodb.password || ''
+    };
+
+    common.db = mongo.db(connectionString, connectionOptions);
 
     common.config = countlyConfig;
 
@@ -90,9 +97,9 @@ var common = {},
     };
 
     // Creates a time object in the format object["2012.7.20.property"] = increment.
-    common.fillTimeObject = function (params, object, property, increment) {
+    common.fillTimeObject = function (request, object, property, increment) {
         var increment = (increment) ? increment : 1,
-            timeObj = params.time;
+            timeObj = request.params.time;
 
         if (!timeObj || !timeObj.yearly || !timeObj.monthly || !timeObj.weekly || !timeObj.daily || !timeObj.hourly) {
             return false;
@@ -159,95 +166,6 @@ var common = {},
         }
 
         return tmpDate;
-    };
-
-    /*
-     argProperties = { argName: { required: true, type: 'String', max-length: 25, min-length: 25, exclude-from-ret-obj: false }};
-     */
-    common.validateArgs = function (args, argProperties) {
-
-        var returnObj = {};
-
-        if (!args) {
-            return false;
-        }
-
-        for (var arg in argProperties) {
-            if (argProperties[arg].required) {
-                if (args[arg] === void 0) {
-                    return false;
-                }
-            }
-
-            if (args[arg] !== void 0) {
-                if (argProperties[arg].type) {
-                    if (argProperties[arg].type === 'Number' || argProperties[arg].type === 'String') {
-                        if (toString.call(args[arg]) !== '[object ' + argProperties[arg].type + ']') {
-                            return false;
-                        }
-                    } else if (argProperties[arg].type === 'Boolean') {
-                        if (!(args[arg] !== true || args[arg] !== false || toString.call(args[arg]) !== '[object Boolean]')) {
-                            return false;
-                        }
-                    } else if (argProperties[arg].type === 'Array') {
-                        if (!Array.isArray(args[arg])) {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                } else {
-                    if (toString.call(args[arg]) !== '[object String]') {
-                        return false;
-                    }
-                }
-
-                /*
-                if (toString.call(args[arg]) === '[object String]') {
-                    args[arg] = args[arg].replace(/([.$])/mg, '');
-                }
-                */
-
-                if (argProperties[arg]['max-length']) {
-                    if (args[arg].length > argProperties[arg]['max-length']) {
-                        return false;
-                    }
-                }
-
-                if (argProperties[arg]['min-length']) {
-                    if (args[arg].length < argProperties[arg]['min-length']) {
-                        return false;
-                    }
-                }
-
-                if (!argProperties[arg]['exclude-from-ret-obj']) {
-                    returnObj[arg] = args[arg];
-                }
-            }
-        }
-
-        return returnObj;
-    };
-
-    common.returnMessage = function (params, returnCode, message) {
-        params.res.writeHead(returnCode, {'Content-Type': 'application/json; charset=utf-8'});
-        if (params.qstring.callback) {
-            params.res.write(params.qstring.callback + '(' + JSON.stringify({result: message}) + ')');
-        } else {
-            params.res.write(JSON.stringify({result: message}));
-        }
-        params.res.end();
-    };
-
-    common.returnOutput = function (params, output) {
-        params.res.writeHead(200, {'Content-Type': 'application/json; charset=utf-8'});
-        if (params.qstring.callback) {
-            params.res.write(params.qstring.callback + '(' + JSON.stringify(output) + ')');
-        } else {
-            params.res.write(JSON.stringify(output));
-        }
-
-        params.res.end();
     };
 
 }(common));

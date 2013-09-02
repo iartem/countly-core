@@ -5,23 +5,23 @@ var usersApi = {},
 
 (function (usersApi) {
 
-    usersApi.getCurrentUser = function (params) {
-        delete params.member.password;
+    usersApi.getCurrentUser = function (request) {
+        delete request.params.member.password;
 
-        common.returnOutput(params, params.member);
+        request.output(request.params.member);
         return true;
     };
 
-    usersApi.getAllUsers = function (params) {
-        if (!params.member.global_admin) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+    usersApi.getAllUsers = function (request) {
+        if (!request.params.member.global_admin) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
         common.db.collection('members').find({}).toArray(function (err, members) {
 
             if (!members || err) {
-                common.returnOutput(params, {});
+                request.output({});
                 return false;
             }
 
@@ -41,16 +41,16 @@ var usersApi = {},
                 };
             }
 
-            common.returnOutput(params, membersObj);
+            request.output(membersObj);
             return true;
         });
 
         return true;
     };
 
-    usersApi.createUser = function (params) {
-        if (!params.member.global_admin) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+    usersApi.createUser = function (request) {
+        if (!request.params.member.global_admin) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
@@ -65,14 +65,14 @@ var usersApi = {},
             },
             newMember = {};
 
-        if (!(newMember = common.validateArgs(params.qstring.args, argProps))) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(newMember = request.validateArgs(request.params.args, argProps))) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
         common.db.collection('members').findOne({ $or : [ {email: newMember.email}, {username: newMember.username} ] }, function(err, member) {
             if (member || err) {
-                common.returnMessage(params, 200, 'Email or username already exists');
+                request.message(200, 'Email or username already exists');
                 return false;
             } else {
                 createUser();
@@ -95,9 +95,9 @@ var usersApi = {},
 
                     delete member[0].password;
 
-                    common.returnOutput(params, member[0]);
+                    request.output(member[0]);
                 } else {
-                    common.returnMessage(params, 500, 'Error creating user');
+                    request.message(500, 'Error creating user');
                 }
             });
         }
@@ -105,7 +105,7 @@ var usersApi = {},
         return true;
     };
 
-    usersApi.updateUser = function (params) {
+    usersApi.updateUser = function (request) {
         var argProps = {
                 'user_id':      { 'required': true, 'type': 'String', 'min-length': 24, 'max-length': 24, 'exclude-from-ret-obj': true },
                 'full_name':    { 'required': false, 'type': 'String' },
@@ -120,13 +120,13 @@ var usersApi = {},
             updatedMember = {},
             passwordNoHash = "";
 
-        if (!(updatedMember = common.validateArgs(params.qstring.args, argProps))) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(updatedMember = request.validateArgs(request.params.args, argProps))) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
-        if (!(params.member.global_admin || params.member._id === params.qstring.args.user_id)) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+        if (!(request.params.member.global_admin || request.params.member._id === request.params.args.user_id)) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
@@ -135,15 +135,15 @@ var usersApi = {},
             updatedMember.password = common.sha1Hash(updatedMember.password);
         }
 
-        common.db.collection('members').update({'_id': common.db.ObjectID(params.qstring.args.user_id)}, {'$set': updatedMember}, {safe: true}, function(err, isOk) {
-            common.db.collection('members').findOne({'_id': common.db.ObjectID(params.qstring.args.user_id)}, function(err, member) {
+        common.db.collection('members').update({'_id': common.db.ObjectID(request.params.args.user_id)}, {'$set': updatedMember}, {safe: true}, function(err, isOk) {
+            common.db.collection('members').findOne({'_id': common.db.ObjectID(request.params.args.user_id)}, function(err, member) {
                 if (member && !err) {
-                    if (params.qstring.args.send_notification && passwordNoHash) {
+                    if (request.params.args.send_notification && passwordNoHash) {
                         mail.sendToUpdatedMember(member, passwordNoHash);
                     }
-                    common.returnMessage(params, 200, 'Success');
+                    request.message(200, 'Success');
                 } else {
-                    common.returnMessage(params, 500, 'Error updating user');
+                    request.message(500, 'Error updating user');
                 }
             });
         });
@@ -151,32 +151,32 @@ var usersApi = {},
         return true;
     };
 
-    usersApi.deleteUser = function (params) {
+    usersApi.deleteUser = function (request) {
         var argProps = {
                 'user_ids': { 'required': true, 'type': 'Array' }
             },
             userIds = [];
 
-        if (!params.member.global_admin) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+        if (!request.params.member.global_admin) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
-        if (!(userIds = common.validateArgs(params.qstring.args, argProps).user_ids)) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(userIds = request.validateArgs(request.params.args, argProps).user_ids)) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
         for (var i = 0; i < userIds.length; i++) {
             // Each user id should be 24 chars long and a user can't delete his own account
-            if (userIds[i] === params.member._id || userIds[i].length !== 24) {
+            if (userIds[i] === request.params.member._id || userIds[i].length !== 24) {
                 continue;
             } else {
                 common.db.collection('members').remove({'_id': common.db.ObjectID(userIds[i])});
             }
         }
 
-        common.returnMessage(params, 200, 'Success');
+        request.message(200, 'Success');
         return true;
     };
 

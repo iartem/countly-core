@@ -11,7 +11,12 @@ var http = require('http'),
     countlyStats = require('../../api/parts/data/stats.js'),
     countlyConfig = require('./config'),
     connectionString = (typeof countlyConfig.mongodb === "string")? countlyConfig.mongodb : (countlyConfig.mongodb.host + ':' + countlyConfig.mongodb.port + '/' + countlyConfig.mongodb.db + '?auto_reconnect=true&safe=true'),
-    countlyDb = mongo.db(connectionString, {safe:true});
+    connectionOptions = {
+        safe:true,
+        username: countlyConfig.mongodb.username || '',
+        password: countlyConfig.mongodb.password || ''
+    },
+    countlyDb = mongo.db(connectionString, connectionOptions);
 
 function sha1Hash(str, addSalt) {
     var salt = (addSalt) ? new Date().getTime() : "";

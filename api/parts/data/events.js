@@ -4,7 +4,7 @@ var events = {},
 
 (function (events) {
 
-    events.processEvents = function(params) {
+    events.processEvents = function(request) {
         var events = [],
             eventCollections = {},
             eventSegments = {},
@@ -13,9 +13,9 @@ var events = {},
             shortCollectionName = "",
             eventCollectionName = "";
 
-        for (var i=0; i < params.qstring.events.length; i++) {
+        for (var i=0; i < request.params.events.length; i++) {
 
-            var currEvent = params.qstring.events[i];
+            var currEvent = request.params.events[i];
             tmpEventObj = {};
             tmpEventColl = {};
 
@@ -26,7 +26,7 @@ var events = {},
 
             // Mongodb collection names can not contain system. or $
             shortCollectionName = currEvent.key.replace(/system\.|\.\.|\$/g, "");
-            eventCollectionName = shortCollectionName + params.app_id;
+            eventCollectionName = shortCollectionName + request.params.app_id;
 
             // Mongodb collection names can not be longer than 128 characters
             if (eventCollectionName.length > 128) {
@@ -34,16 +34,16 @@ var events = {},
             }
 
             // If present use timestamp inside each event while recording
-            if (params.qstring.events[i].timestamp) {
-                params.time = common.initTimeObj(params.appTimezone, params.qstring.events[i].timestamp);
+            if (request.params.events[i].timestamp) {
+                request.params.time = common.initTimeObj(request.params.appTimezone, request.params.events[i].timestamp);
             }
 
             common.arrayAddUniq(events, shortCollectionName);
 
             if (currEvent.sum && common.isNumber(currEvent.sum)) {
-                common.fillTimeObject(params, tmpEventObj, common.dbMap['sum'], currEvent.sum);
+                common.fillTimeObject(request, tmpEventObj, common.dbMap['sum'], currEvent.sum);
             }
-            common.fillTimeObject(params, tmpEventObj, common.dbMap['count'], currEvent.count);
+            common.fillTimeObject(request, tmpEventObj, common.dbMap['count'], currEvent.count);
 
             tmpEventColl["no-segment"] = tmpEventObj;
 
@@ -61,9 +61,9 @@ var events = {},
                     tmpSegVal = tmpSegVal.replace(/^\$/, "").replace(/\./g, ":");
 
                     if (currEvent.sum && common.isNumber(currEvent.sum)) {
-                        common.fillTimeObject(params, tmpEventObj, tmpSegVal + '.' + common.dbMap['sum'], currEvent.sum);
+                        common.fillTimeObject(request, tmpEventObj, tmpSegVal + '.' + common.dbMap['sum'], currEvent.sum);
                     }
-                    common.fillTimeObject(params, tmpEventObj, tmpSegVal + '.' + common.dbMap['count'], currEvent.count);
+                    common.fillTimeObject(request, tmpEventObj, tmpSegVal + '.' + common.dbMap['count'], currEvent.count);
 
                     if (!eventSegments[eventCollectionName]) {
                         eventSegments[eventCollectionName] = {};
@@ -94,9 +94,9 @@ var events = {},
                 currEvent.seg_val = currEvent.seg_val.replace(/^\$/, "").replace(/\./g, ":");
 
                 if (currEvent.sum && common.isNumber(currEvent.sum)) {
-                    common.fillTimeObject(params, tmpEventObj, currEvent.seg_val + '.' + common.dbMap['sum'], currEvent.sum);
+                    common.fillTimeObject(request, tmpEventObj, currEvent.seg_val + '.' + common.dbMap['sum'], currEvent.sum);
                 }
-                common.fillTimeObject(params, tmpEventObj, currEvent.seg_val + '.' + common.dbMap['count'], currEvent.count);
+                common.fillTimeObject(request, tmpEventObj, currEvent.seg_val + '.' + common.dbMap['count'], currEvent.count);
 
                 if (!eventSegments[eventCollectionName]) {
                     eventSegments[eventCollectionName] = {};
@@ -128,7 +128,7 @@ var events = {},
             mergeEvents(eventCollections[eventCollectionName], tmpEventColl);
         }
 
-        if (!common.config.api.safe) {
+        if (!request.config.safe) {
             for (var collection in eventCollections) {
                 for (var segment in eventCollections[collection]) {
                     if (segment == "no-segment" && eventSegments[collection]) {
@@ -159,10 +159,10 @@ var events = {},
 
                 if (needRollback) {
                     async.map(eventUpdateResults, rollbackEventDb, function (err, eventRollbackResults) {
-                        common.returnMessage(params, 500, 'Failure');
+                        request.message(500, 'Failure');
                     });
                 } else {
-                    common.returnMessage(params, 200, 'Success');
+                    request.message(200, 'Success');
                 }
             });
 
@@ -212,16 +212,16 @@ var events = {},
             var eventSegmentList = {'$addToSet': {'list': {'$each': events}}};
 
             for (var event in eventSegments) {
-                if (!eventSegmentList['$addToSet']["segments." + event.replace(params.app_id, "")]) {
-                    eventSegmentList['$addToSet']["segments." + event.replace(params.app_id, "")] = {};
+                if (!eventSegmentList['$addToSet']["segments." + event.replace(request.params.app_id, "")]) {
+                    eventSegmentList['$addToSet']["segments." + event.replace(request.params.app_id, "")] = {};
                 }
 
                 if (eventSegments[event]['meta.segments']) {
-                    eventSegmentList['$addToSet']["segments." + event.replace(params.app_id, "")] = eventSegments[event]['meta.segments'];
+                    eventSegmentList['$addToSet']["segments." + event.replace(request.params.app_id, "")] = eventSegments[event]['meta.segments'];
                 }
             }
 
-            common.db.collection('events').update({'_id': params.app_id}, eventSegmentList, {'upsert': true}, function(err, res){});
+            common.db.collection('events').update({'_id': request.params.app_id}, eventSegmentList, {'upsert': true}, function(err, res){});
         }
     };
 

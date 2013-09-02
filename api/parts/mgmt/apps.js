@@ -4,38 +4,38 @@ var appsApi = {},
 
 (function (appsApi) {
 
-    appsApi.getAllApps = function (params) {
-        if (!(params.member.global_admin)) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+    appsApi.getAllApps = function (request) {
+        if (!(request.params.member.global_admin)) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
         common.db.collection('apps').find({}).toArray(function (err, apps) {
 
             if (!apps || err) {
-                common.returnOutput(params, {});
+                request.output({});
                 return false;
             }
 
-            common.returnOutput(params, packApps(apps));
+            request.output(packApps(apps));
             return true;
         });
 
         return true;
     };
 
-    appsApi.getCurrentUserApps = function (params) {
-        if (params.member.global_admin) {
-            appsApi.getAllApps(params);
+    appsApi.getCurrentUserApps = function (request) {
+        if (request.params.member.global_admin) {
+            appsApi.getAllApps(request);
             return true;
         }
 
         var adminOfAppIds = [],
             userOfAppIds = [];
 
-        if (params.member.admin_of) {
-            for (var i = 0; i < params.member.admin_of.length ;i++) {
-                if (params.member.admin_of[i] == "") {
+        if (request.params.member.admin_of) {
+            for (var i = 0; i < request.params.member.admin_of.length ;i++) {
+                if (request.params.member.admin_of[i] == "") {
                     continue;
                 }
 
@@ -43,24 +43,24 @@ var appsApi = {},
             }
         }
 
-        if (params.member.user_of) {
-            for (var i = 0; i < params.member.user_of.length ;i++) {
-                userOfAppIds[userOfAppIds.length] = common.db.ObjectID(params.member.user_of[i]);
+        if (request.params.member.user_of) {
+            for (var i = 0; i < request.params.member.user_of.length ;i++) {
+                userOfAppIds[userOfAppIds.length] = common.db.ObjectID(request.params.member.user_of[i]);
             }
         }
 
         common.db.collection('apps').find({ _id : { '$in': adminOfAppIds } }).toArray(function(err, admin_of) {
             common.db.collection('apps').find({ _id : { '$in': userOfAppIds } }).toArray(function(err, user_of) {
-                common.returnOutput(params, {admin_of: packApps(admin_of), user_of: packApps(user_of)});
+                request.output({admin_of: packApps(admin_of), user_of: packApps(user_of)});
             });
         });
 
         return true;
     };
 
-    appsApi.createApp = function (params) {
-        if (!(params.member.global_admin)) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+    appsApi.createApp = function (request) {
+        if (!(request.params.member.global_admin)) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
@@ -72,8 +72,8 @@ var appsApi = {},
             },
             newApp = {};
 
-        if (!(newApp = common.validateArgs(params.qstring.args, argProps))) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(newApp = request.validateArgs(request.params.args, argProps))) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
@@ -87,11 +87,11 @@ var appsApi = {},
             newApp._id = app[0]._id;
             newApp.key = appKey;
 
-            common.returnOutput(params, newApp);
+            request.output(newApp);
         });
     };
 
-    appsApi.updateApp = function (params) {
+    appsApi.updateApp = function (request) {
         var argProps = {
                 'app_id':   { 'required': true, 'type': 'String', 'min-length': 24, 'max-length': 24, 'exclude-from-ret-obj': true },
                 'name':     { 'required': false, 'type': 'String' },
@@ -101,30 +101,30 @@ var appsApi = {},
             },
             updatedApp = {};
 
-        if (!(updatedApp = common.validateArgs(params.qstring.args, argProps))) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(updatedApp = request.validateArgs(request.params.args, argProps))) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
         if (Object.keys(updatedApp).length === 0) {
-            common.returnMessage(params, 200, 'Nothing changed');
+            request.message(200, 'Nothing changed');
             return true;
         }
 
         processAppProps(updatedApp);
 
-        if (params.member && params.member.global_admin) {
-            common.db.collection('apps').update({'_id': common.db.ObjectID(params.qstring.args.app_id)}, {$set: updatedApp}, function(err, app) {
-                common.returnOutput(params, updatedApp);
+        if (request.params.member && request.params.member.global_admin) {
+            common.db.collection('apps').update({'_id': common.db.ObjectID(request.params.args.app_id)}, {$set: updatedApp}, function(err, app) {
+                request.output(updatedApp);
             });
         } else {
-            common.db.collection('members').findOne({'_id': params.member._id}, {admin_of: 1}, function(err, member){
-                if (member.admin_of && member.admin_of.indexOf(params.qstring.args.app_id) !== -1) {
-                    common.db.collection('apps').update({'_id': common.db.ObjectID(params.qstring.args.app_id)}, {$set: updatedApp}, function(err, app) {
-                        common.returnOutput(params, updatedApp);
+            common.db.collection('members').findOne({'_id': request.params.member._id}, {admin_of: 1}, function(err, member){
+                if (member.admin_of && member.admin_of.indexOf(request.params.args.app_id) !== -1) {
+                    common.db.collection('apps').update({'_id': common.db.ObjectID(request.params.args.app_id)}, {$set: updatedApp}, function(err, app) {
+                        request.output(updatedApp);
                     });
                 } else {
-                    common.returnMessage(params, 401, 'User does not have admin rights for this app');
+                    request.message(401, 'User does not have admin rights for this app');
                 }
             });
         }
@@ -132,9 +132,9 @@ var appsApi = {},
         return true;
     };
 
-    appsApi.deleteApp = function (params) {
-        if (!(params.member.global_admin)) {
-            common.returnMessage(params, 401, 'User is not a global administrator');
+    appsApi.deleteApp = function (request) {
+        if (!(request.params.member.global_admin)) {
+            request.message(401, 'User is not a global administrator');
             return false;
         }
 
@@ -143,15 +143,15 @@ var appsApi = {},
             },
             appId = '';
 
-        if (!(appId = common.validateArgs(params.qstring.args, argProps).app_id)) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(appId = request.validateArgs(request.params.args, argProps).app_id)) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
         common.db.collection('apps').remove({'_id': common.db.ObjectID(appId)}, {safe: true}, function(err, result) {
 
             if (!result) {
-                common.returnMessage(params, 500, 'Error deleting app');
+                request.message(500, 'Error deleting app');
                 return false;
             }
 
@@ -161,34 +161,34 @@ var appsApi = {},
             common.db.collection('members').update({}, {$pull: {'apps': appId, 'admin_of': appId, 'user_of': appId}}, {multi: true}, function(err, app) {});
 
             deleteAppData(appId);
-            common.returnMessage(params, 200, 'Success');
+            request.message(200, 'Success');
             return true;
         });
 
         return true;
     };
 
-    appsApi.resetApp = function (params) {
+    appsApi.resetApp = function (request) {
         var argProps = {
                 'app_id': { 'required': true, 'type': 'String', 'min-length': 24, 'max-length': 24 }
             },
             appId = '';
 
-        if (!(appId = common.validateArgs(params.qstring.args, argProps).app_id)) {
-            common.returnMessage(params, 400, 'Not enough args');
+        if (!(appId = request.validateArgs(request.params.args, argProps).app_id)) {
+            request.message(400, 'Not enough args');
             return false;
         }
 
-        if (params.member.global_admin) {
+        if (request.params.member.global_admin) {
             deleteAppData(appId);
-            common.returnMessage(params, 200, 'Success');
+            request.message(200, 'Success');
         } else {
-            common.db.collection('members').findOne({ admin_of : appId, api_key: params.member.api_key}, function(err, member) {
+            common.db.collection('members').findOne({ admin_of : appId, api_key: request.params.member.api_key}, function(err, member) {
                 if (!err && member) {
                     deleteAppData(appId);
-                    common.returnMessage(params, 200, 'Success');
+                    request.message(200, 'Success');
                 } else {
-                    common.returnMessage(params, 401, 'User does not have admin rights for this app');
+                    request.message(401, 'User does not have admin rights for this app');
                 }
             });
         }
