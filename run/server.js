@@ -202,11 +202,20 @@ var http = require('http'),
                 res:            res,
                 message: function(code, message){
                     this.status = code;
-                    CountlyServer.returnMessage(this, code, message);
+
+                    if (this.onResult) {
+                        var f = this.onResult;
+                        this.onResult = undefined;
+                        f(this.status, message);
+                    } else CountlyServer.returnMessage(this, code, message);
                 },
                 output: function(output) {
                     this.status = 200;
-                    CountlyServer.returnOutput(this, output);
+                    if (this.onResult) {
+                        var f = this.onResult;
+                        this.onResult = undefined;
+                        f(this.status, output);
+                    } else CountlyServer.returnOutput(this, output);
                 },
                 validate: function(rules) {
                     return CountlyServer.validateArgs(this.params, rules);
