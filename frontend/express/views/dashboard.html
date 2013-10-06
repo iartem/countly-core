@@ -27,7 +27,7 @@
 		<div id="sidebar-top">
 			<a href="#/"><div id="sidebar-logo"></div></a>
 			<div id="sidebar-app-select">
-				<div class="logo" <% if (userOfApps[0]){ %>style="background-image:url('/appimages/<%= userOfApps[0]._id %>.png')"<% } %>></div>
+				<div class="logo" <% if (userOfApps[0]){ %>style="background-image:url('/files/<%= userOfApps[0]._id %>.png')"<% } %>></div>
 				<div class="text"><% if (userOfApps[0]){ %><%= userOfApps[0].name %><% } %></div>
 			</div>
 		</div>
@@ -173,7 +173,7 @@
 		<div class="apps-scrollable">
 			<% for (var i = 0; i < userOfApps.length; i++) { %>
 				<div class="app-container app-navigate" data-key="<%= userOfApps[i].key %>" data-id="<%= userOfApps[i]['_id'] %>">
-					<div class="logo" style="background-image: url('/appimages/<%= userOfApps[i]['_id'] %>.png');"></div>
+					<div class="logo" style="background-image: url('/files/<%= userOfApps[i]['_id'] %>.png');"></div>
 					<div class="name"><%= userOfApps[i].name %></div>
 					<div class="drag"></div>
 				</div>
@@ -571,7 +571,7 @@
 			<div class="scrollable">
 				{{#eachOfObjectValue admin_apps}}
 				<div class="app-container" data-key="{{this.key}}" data-id="{{this._id}}">
-					<div class="logo" style="background-image: url('/appimages/{{this._id}}.png');"></div>
+					<div class="logo" style="background-image: url('/files/{{this._id}}.png');"></div>
 					<div class="name">{{this.name}}</div>
 				</div>
 				{{/eachOfObjectValue}}

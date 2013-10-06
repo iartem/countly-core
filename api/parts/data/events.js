@@ -4,7 +4,7 @@ var events = {},
 
 (function (events) {
 
-    events.processEvents = function(request) {
+    events.processEvents = function(request, clb) {
         var events = [],
             eventCollections = {},
             eventSegments = {},
@@ -138,6 +138,7 @@ var events = {},
                     }
                 }
             }
+            clb();
         } else {
             var eventDocs = [];
 
@@ -159,10 +160,10 @@ var events = {},
 
                 if (needRollback) {
                     async.map(eventUpdateResults, rollbackEventDb, function (err, eventRollbackResults) {
-                        request.message(500, 'Failure');
+                        clb(500);
                     });
                 } else {
-                    request.message(200, 'Success');
+                    clb();
                 }
             });
 

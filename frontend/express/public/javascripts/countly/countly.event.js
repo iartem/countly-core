@@ -183,7 +183,7 @@
 
         _activeEvent = activeEvent;
 
-        $.when(countlyEvent.initialize()).then(callback);
+        $.when(countlyEvent.initialize(true)).then(callback);
     };
 
     countlyEvent.setActiveSegmentation = function (activeSegmentation) {
@@ -200,6 +200,8 @@
             eventMap = (_activeEvents) ? ((_activeEvents.map) ? _activeEvents.map : {}) : {},
             countString = (eventMap[_activeEvent] && eventMap[_activeEvent].count) ? eventMap[_activeEvent].count : jQuery.i18n.map["events.table.count"],
             sumString = (eventMap[_activeEvent] && eventMap[_activeEvent].sum) ? eventMap[_activeEvent].sum : jQuery.i18n.map["events.table.sum"];
+
+        if (!_activeEventDb) return eventData;
 
         if (_activeSegmentation) {
             eventData = {chartData:{}, chartDP:{dp:[], ticks:[]}};
@@ -599,6 +601,10 @@
 
             return eventData;
         }
+    };
+
+    countlyEvent.getActiveEventDb = function(){
+        return _activeEventDb;
     };
 
     function setMeta() {

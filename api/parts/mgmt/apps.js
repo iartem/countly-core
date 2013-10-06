@@ -4,6 +4,8 @@ var appsApi = {},
 
 (function (appsApi) {
 
+    appsApi.cleanAppFields = ['_id', 'category', 'country', 'key', 'name', 'timezone'];
+
     appsApi.getAllApps = function (request) {
         if (!(request.params.member.global_admin)) {
             request.message(401, 'User is not a global administrator');
@@ -155,7 +157,7 @@ var appsApi = {},
                 return false;
             }
 
-            var iconPath = __dirname + '/public/appimages/' + appId + '.png';
+            var iconPath = __dirname + '/public/files/' + appId + '.png';
             fs.unlink(iconPath, function() {});
 
             common.db.collection('members').update({}, {$pull: {'apps': appId, 'admin_of': appId, 'user_of': appId}}, {multi: true}, function(err, app) {});
@@ -222,14 +224,12 @@ var appsApi = {},
         var appsObj = {};
 
         for (var i = 0; i < apps.length ;i++) {
-            appsObj[apps[i]._id] = {
-                '_id': apps[i]._id,
-                'category' : apps[i].category,
-                'country' : apps[i].country,
-                'key' : apps[i].key,
-                'name' : apps[i].name,
-                'timezone' : apps[i].timezone
-            };
+            var app = {};
+            for (var j in appsApi.cleanAppFields) {
+                var field = appsApi.cleanAppFields[j];
+                app[field] = apps[i][field]
+            }
+            appsObj[apps[i]._id] = app;
         }
 
         return appsObj;

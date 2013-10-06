@@ -7,6 +7,8 @@
         _activeAppKey = 0,
         _initialized = false;
 
+    countlySession.additionalRequestAttrs = {};
+
     //Public Methods
     countlySession.initialize = function () {
         if (_initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY) {
@@ -20,11 +22,11 @@
             return $.ajax({
                 type:"GET",
                 url:countlyCommon.API_PARTS.data.r,
-                data:{
+                data: _.extend(countlySession.additionalRequestAttrs, {
                     "api_key":countlyGlobal.member.api_key,
                     "app_id":countlyCommon.ACTIVE_APP_ID,
                     "method":"sessions"
-                },
+                }),
                 dataType:"jsonp",
                 success:function (json) {
                     _sessionDb = json;
@@ -48,12 +50,12 @@
             return $.ajax({
                 type:"GET",
                 url:countlyCommon.API_PARTS.data.r,
-                data:{
+                data: _.extend(countlySession.additionalRequestAttrs, {
                     "api_key":countlyGlobal.member.api_key,
                     "app_id":countlyCommon.ACTIVE_APP_ID,
                     "method":"sessions",
                     "action":"refresh"
-                },
+                }),
                 dataType:"jsonp",
                 success:function (json) {
                     countlyCommon.extendDbObj(_sessionDb, json);

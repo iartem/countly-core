@@ -37,7 +37,7 @@ var usersApi = {},
                     'admin_of':members[i].admin_of,
                     'user_of':members[i].user_of,
                     'global_admin':(members[i].global_admin === true),
-                    'is_current_user':(members[i].api_key == params.member.api_key)
+                    'is_current_user':(members[i].api_key == request.params.member.api_key)
                 };
             }
 

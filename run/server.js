@@ -126,10 +126,16 @@ var http = require('http'),
 
             if (args[arg] !== void 0) {
                 if (argProperties[arg].type) {
-                    if (argProperties[arg].type === 'Number' || argProperties[arg].type === 'String') {
+                    if (args[arg] == null) {
+                        // do nothing
+                    } else if (argProperties[arg].type === 'Number' || argProperties[arg].type === 'String') {
                         if (toString.call(args[arg]) !== '[object ' + argProperties[arg].type + ']') {
                             return false;
                         }
+                    } else if (argProperties[arg].type === 'URL') {
+                        if (toString.call(args[arg]) !== '[object String]') {
+                            return false;
+                        } else if (args[arg] && args[arg].indexOf('http://') != 0 && args[arg].indexOf('https://') != 0) return false;
                     } else if (argProperties[arg].type === 'Boolean') {
                         if (!(args[arg] !== true || args[arg] !== false || toString.call(args[arg]) !== '[object Boolean]')) {
                             return false;
@@ -174,7 +180,31 @@ var http = require('http'),
         return returnObj;
     };
 
-    CountlyServer.Server = function(config, endpointsProducer){
+    // Pipe output of original endpoint to onResult before returning to the client
+    CountlyServer.pipeEndpoint = function(apiPath, onResult) {
+        for (var path in CountlyServer.endpoints) if (apiPath == path) {
+            var instructions = CountlyServer.endpoints[path];
+            if (_.isArray(instructions)) {
+                if (instructions.length == 2 && _.isObject(instructions[0]) && _.isFunction(instructions[1])) {
+                    instructions[1] = pipedEndpoint(instructions[1], onResult);
+                }
+            } else {
+                CountlyServer.endpoints[path] = pipedEndpoint(instructions, onResult);
+            }
+            return;
+        }
+
+        throw new Error('Endpoint for ' + apiPath + ' cannot be piped because there is no such endpoint');
+
+        function pipedEndpoint(endpoint, onResult) {
+            return function(request) {
+                request.onResult = onResult;
+                endpoint(request);
+            }
+        }
+    };
+
+    CountlyServer.Server = function(config, endpointsProducer, onStart){
         CountlyServer.config = config;
         CountlyServer.endpoints = endpointsProducer(CountlyServer);
 
@@ -206,7 +236,7 @@ var http = require('http'),
                     if (this.onResult) {
                         var f = this.onResult;
                         this.onResult = undefined;
-                        f(this.status, message);
+                        f.call(this, this.status, message);
                     } else CountlyServer.returnMessage(this, code, message);
                 },
                 output: function(output) {
@@ -214,7 +244,7 @@ var http = require('http'),
                     if (this.onResult) {
                         var f = this.onResult;
                         this.onResult = undefined;
-                        f(this.status, output);
+                        f.call(this, this.status, output);
                     } else CountlyServer.returnOutput(this, output);
                 },
                 validate: function(rules) {
@@ -243,6 +273,10 @@ var http = require('http'),
             request.message(404, 'Not found');
 
         }).listen(CountlyServer.config.port, CountlyServer.config.host || '');
+
+        if (CountlyServer.postprocessing) CountlyServer.postprocessing();
+
+        if (onStart) onStart();
 
         console.log('Server started');
     };

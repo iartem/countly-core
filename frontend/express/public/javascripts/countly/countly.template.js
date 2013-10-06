@@ -1457,7 +1457,7 @@ window.ManageAppsView = countlyView.extend({
                 $("#first-app-success").show();
                 $("#new-install-overlay").fadeOut();
                 countlyCommon.setActiveApp(appId);
-                $("#sidebar-app-select").find(".logo").css("background-image", "url('/appimages/" + appId + ".png')");
+                $("#sidebar-app-select").find(".logo").css("background-image", "url('/files/" + appId + ".png')");
                 $("#sidebar-app-select").find(".text").text(countlyGlobal['apps'][appId].name);
             }
 
@@ -1471,7 +1471,7 @@ window.ManageAppsView = countlyView.extend({
             $("#app-edit-category").find(".cly-select .text").data("value", countlyGlobal['apps'][appId].category);
             $("#app-edit-timezone").find(".cly-select .text").data("value", countlyGlobal['apps'][appId].timezone);
             $("#app-edit-category").find(".read").text(appCategories[countlyGlobal['apps'][appId].category]);
-            $("#app-edit-image").find(".read .logo").css({"background-image":'url("/appimages/' + appId + '.png")'});
+            $("#app-edit-image").find(".read .logo").css({"background-image":'url("/files/' + appId + '.png")'});
             var appTimezone = timezones[countlyGlobal['apps'][appId].country];
 
             for (var i = 0; i < appTimezone.z.length; i++) {
@@ -2901,7 +2901,7 @@ var AppRouter = Backbone.Router.extend({
                     break;
                 }
             } else {
-                $("#sidebar-app-select").find(".logo").css("background-image", "url('/appimages/" + countlyCommon.ACTIVE_APP_ID + ".png')");
+                $("#sidebar-app-select").find(".logo").css("background-image", "url('/files/" + countlyCommon.ACTIVE_APP_ID + ".png')");
                 $("#sidebar-app-select .text").text(countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID].name);
                 self.activeAppName = countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID].name;
             }

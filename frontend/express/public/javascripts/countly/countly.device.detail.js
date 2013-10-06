@@ -289,7 +289,7 @@
     }
 
     function fixOSVersion(osName) {
-        return osName.replace(/:/g, ".").replace(/i/g, "iOS ").replace(/a/g, "Android ").replace(/b/g, "BlackBerry ").replace(/w/g, "Windows Phone ");
+        return osName.replace(/:/g, ".").replace(/i/g, "iOS ").replace(/a/g, "GCM ").replace(/b/g, "BlackBerry ").replace(/w/g, "Windows Phone ");
     }
 
 }(window.countlyDeviceDetails = window.countlyDeviceDetails || {}, jQuery));

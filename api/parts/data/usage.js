@@ -5,7 +5,7 @@ var usage = {},
 (function (usage) {
 
     // Performs geoip lookup for the IP address of the app user
-    usage.beginUserSession = function (request) {
+    usage.beginUserSession = function (request, clb) {
         // Location of the user is retrieved using geoip-lite module from her IP address.
         var locationData = geoip.lookup(request.params.ip);
 
@@ -29,20 +29,23 @@ var usage = {},
 
         common.db.collection('app_users' + request.params.app_id).findOne({'_id': request.params.app_user_id }, function (err, dbAppUser){
             processUserSession(dbAppUser, request);
+            clb();
         });
     };
 
-    usage.endUserSession = function (request) {
+    usage.endUserSession = function (request, clb) {
         common.db.collection('app_users' + request.params.app_id).findOne({'_id': request.params.app_user_id }, function (err, dbAppUser){
 
             // If the user does not exist in the app_users collection or she does not have any
             // previous session duration stored than we dont need to calculate the session
             // duration range for this user.
             if (!dbAppUser || !dbAppUser[common.dbUserMap['session_duration']]) {
+                clb(404);
                 return false;
             }
 
             processSessionDurationRange(dbAppUser[common.dbUserMap['session_duration']], request);
+            clb();
         });
     };
 
