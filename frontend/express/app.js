@@ -60,3 +60,5 @@ setEndpoints('get', endpoints);
 setEndpoints('post', endpoints);
 
 app.listen(countlyConfig.web.port, countlyConfig.web.host  || '');
+
+// Fix
