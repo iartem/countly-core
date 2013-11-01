@@ -51,7 +51,7 @@ function setEndpoints(method, endpoints) {
     for (var i in endpoints[method]) {
         var endpoint = endpoints[method][i],
             params = [i].concat(endpoint.length ? endpoint : [endpoint]);
-        app[method].call.apply(app, params);
+        app[method].apply(app, params);
     }
 }
 

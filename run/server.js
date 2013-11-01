@@ -17,6 +17,7 @@ var http = require('http'),
                 return false;
             }
 
+            request.app = app;
             request.params.app_id = app['_id'];
             request.params.app_cc = app['country'];
             request.params.appTimezone = app['timezone'];
@@ -56,9 +57,19 @@ var http = require('http'),
                     return false;
                 }
 
+                request.app = app;
+                request.dimension = app['_id'];
                 request.params.app_id = app['_id'];
                 request.params.appTimezone = app['timezone'];
                 request.params.time = common.initTimeObj(request.params.appTimezone, request.params.timestamp);
+
+                // Change dimension id if it's correct dimension
+                if (request.params.dimensions && app.dimensions) {
+                    app.dimensions.forEach(function(d){
+                        if (("" + d.id) == request.params.dimensions) request.dimension = d.id;
+//                        if (("" + d.id) == request.params.dimensions[0]) request.dimension = d.id;
+                    });
+                }
 
                 if (callbackParam) {
                     callback(callbackParam, request);

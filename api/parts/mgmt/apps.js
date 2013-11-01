@@ -182,12 +182,12 @@ var appsApi = {},
         }
 
         if (request.params.member.global_admin) {
-            deleteAppData(appId);
+            deleteAppData(request, appId);
             request.message(200, 'Success');
         } else {
             common.db.collection('members').findOne({ admin_of : appId, api_key: request.params.member.api_key}, function(err, member) {
                 if (!err && member) {
-                    deleteAppData(appId);
+                    deleteAppData(request, appId);
                     request.message(200, 'Success');
                 } else {
                     request.message(401, 'User does not have admin rights for this app');
@@ -198,24 +198,39 @@ var appsApi = {},
         return true;
     };
 
-    function deleteAppData(appId) {
-        common.db.collection('sessions').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('users').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('carriers').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('locations').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('cities').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('app_users' + appId).drop();
-        common.db.collection('devices').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('device_details').remove({'_id': common.db.ObjectID(appId)});
-        common.db.collection('app_versions').remove({'_id': common.db.ObjectID(appId)});
-
-        common.db.collection('events').findOne({'_id': common.db.ObjectID(appId)}, function(err, events) {
-            if (!err && events && events.list) {
-                for (var i = 0; i < events.list.length; i++) {
-                    common.db.collection(events.list[i] + appId).drop();
+    function deleteAppData(request, appId) {
+        common.db.collection('apps').findOne({'_id': common.db.ObjectID(appId)}, function(err, app){
+            if (err || !app) {
+                request.message(401, 'User does not have admin rights for this app');
+            } else {
+                var ids = [app['_id']];
+                if (app.dimensions && app.dimensions.length) for (var i = 0; i < app.dimensions.length; i++){
+                    ids.push(app.dimensions[i].id);
                 }
 
-                common.db.collection('events').remove({'_id': common.db.ObjectID(appId)});
+                common.db.collection('sessions').remove({"_id": {$in: ids}});
+                common.db.collection('users').remove({"_id": {$in: ids}});
+                common.db.collection('carriers').remove({"_id": {$in: ids}});
+                common.db.collection('locations').remove({"_id": {$in: ids}});
+                common.db.collection('cities').remove({"_id": {$in: ids}});
+                common.db.collection('app_users' + appId).drop();
+                common.db.collection('devices').remove({"_id": {$in: ids}});
+                common.db.collection('device_details').remove({"_id": {$in: ids}});
+                common.db.collection('app_versions').remove({"_id": {$in: ids}});
+
+                common.db.collection('events').find({"_id": {$in: ids}}).toArray(function(err, array) {
+                    if (array) array.forEach(function(events){
+                        if (!err && events && events.list) {
+                            for (var i = 0; i < events.list.length; i++) {
+                                common.db.collection(events.list[i] + app['_id']).drop();
+                            }
+
+                            common.db.collection('events').remove({"_id": app['_id']});
+                        }
+                    })
+                });
+
+                common.db.collection('apps').update({_id: app['_id']}, {$unset: {dimensions: 1}});
             }
         });
     }

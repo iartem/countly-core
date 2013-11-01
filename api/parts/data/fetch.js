@@ -11,7 +11,7 @@ var fetch = {},
 
     fetch.prefetchEventData = function (collection, request) {
         if (!request.params.event) {
-            common.db.collection('events').findOne({'_id':request.params.app_id}, function (err, result) {
+            common.db.collection('events').findOne({'_id':request.dimension}, function (err, result) {
                 if (result && result.list) {
                     if (result.order) {
                         collection = result.order[0];
@@ -20,13 +20,13 @@ var fetch = {},
                         collection = result.list[0];
                     }
 
-                    fetch.fetchEventData(collection + request.params.app_id, request);
+                    fetch.fetchEventData(collection + request.dimension, request);
                 } else {
                     request.output({});
                 }
             });
         } else {
-            fetch.fetchEventData(request.params.event + request.params.app_id, request);
+            fetch.fetchEventData(request.params.event + request.dimension, request);
         }
     };
 
@@ -53,7 +53,7 @@ var fetch = {},
         var eventKeysArr = [];
 
         for (var i = 0; i < request.params.events.length; i++) {
-            eventKeysArr.push(request.params.events[i] + request.params.app_id);
+            eventKeysArr.push(request.params.events[i] + request.dimension);
         }
 
         if (!eventKeysArr.length) {
@@ -142,7 +142,7 @@ var fetch = {},
     };
 
     fetch.fetchCollection = function (collection, request) {
-        common.db.collection(collection).findOne({'_id':request.params.app_id}, function (err, result) {
+        common.db.collection(collection.replace(request.params.app_id, request.dimension)).findOne({'_id':request.dimension}, function (err, result) {
             if (!result) {
                 result = {};
             }
@@ -163,7 +163,7 @@ var fetch = {},
             fetchFields['meta'] = 1;
         }
 
-        common.db.collection(collection).findOne({'_id':request.params.app_id}, fetchFields, function (err, result) {
+        common.db.collection(collection).findOne({'_id':request.dimension}, fetchFields, function (err, result) {
             if (!result) {
                 var now = new common.time.Date();
                 result = {};
@@ -176,9 +176,9 @@ var fetch = {},
 
     fetch.fetchDashboard = function(request) {
 
-        common.db.collection("sessions").findOne({'_id': request.params.app_id}, function (err, sessionsDoc) {
-            common.db.collection("device_details").findOne({'_id': request.params.app_id}, function (err, deviceDetailsDoc) {
-                common.db.collection("carriers").findOne({'_id': request.params.app_id}, function (err, carriersDoc) {
+        common.db.collection("sessions").findOne({'_id': request.dimension}, function (err, sessionsDoc) {
+            common.db.collection("device_details").findOne({'_id': request.dimension}, function (err, deviceDetailsDoc) {
+                common.db.collection("carriers").findOne({'_id': request.dimension}, function (err, carriersDoc) {
 
                     var output = {},
                         periods = [
@@ -215,7 +215,7 @@ var fetch = {},
 
     fetch.fetchCountries = function(request) {
 
-        common.db.collection("locations").findOne({'_id': request.params.app_id}, function (err, locationsDoc) {
+        common.db.collection("locations").findOne({'_id': request.dimension}, function (err, locationsDoc) {
             var output = {},
                 periods = [
                     {period: "30days", out: "30days"},

@@ -1,4 +1,5 @@
 var usage = {},
+    dims = require('./dimensions.js'),
     common = require('./../../utils/common.js'),
     geoip = require('geoip-lite');
 
@@ -27,26 +28,23 @@ var usage = {},
             }
         }
 
-        common.db.collection('app_users' + request.params.app_id).findOne({'_id': request.params.app_user_id }, function (err, dbAppUser){
-            processUserSession(dbAppUser, request);
-            clb();
-        });
+        processUserSession(request);
+
+        clb();
     };
 
     usage.endUserSession = function (request, clb) {
-        common.db.collection('app_users' + request.params.app_id).findOne({'_id': request.params.app_user_id }, function (err, dbAppUser){
+        // If the user does not exist in the app_users collection or she does not have any
+        // previous session duration stored than we dont need to calculate the session
+        // duration range for this user.
+        if (!request.user || !request.user[common.dbUserMap['session_duration']]) {
+            clb(404);
+            return false;
+        }
 
-            // If the user does not exist in the app_users collection or she does not have any
-            // previous session duration stored than we dont need to calculate the session
-            // duration range for this user.
-            if (!dbAppUser || !dbAppUser[common.dbUserMap['session_duration']]) {
-                clb(404);
-                return false;
-            }
+        processSessionDurationRange(request.user[common.dbUserMap['session_duration']], request);
 
-            processSessionDurationRange(dbAppUser[common.dbUserMap['session_duration']], request);
-            clb();
-        });
+        clb();
     };
 
     usage.processSessionDuration = function (request, callback) {
@@ -61,7 +59,7 @@ var usage = {},
 
             common.fillTimeObject(request, updateSessions, common.dbMap['duration'], session_duration);
 
-            common.db.collection('sessions').update({'_id': request.params.app_id}, {'$inc': updateSessions}, {'upsert': false});
+            dims.updateAppIdWithDimensions(request, 'sessions', request.params.app_id, {'$inc': updateSessions}, {upsert: false});
 
             // sd: session duration, tsd: total session duration. common.dbUserMap is not used here for readability purposes.
             common.db.collection('app_users' + request.params.app_id).update({'_id': request.params.app_user_id}, {'$inc': {'sd': session_duration, 'tsd': session_duration}}, {'upsert': true}, function() {
@@ -98,14 +96,15 @@ var usage = {},
         }
 
         common.fillTimeObject(request, updateSessions, common.dbMap['durations'] + '.' + calculatedDurationRange);
-        common.db.collection('sessions').update({'_id': request.params.app_id}, {'$inc': updateSessions, '$addToSet': {'meta.d-ranges': calculatedDurationRange}}, {'upsert': false});
+        dims.updateAppIdWithDimensions(request, 'sessions', request.params.app_id, {'$inc': updateSessions, '$addToSet': {'meta.d-ranges': calculatedDurationRange}}, {upsert: false});
 
         // sd: session duration. common.dbUserMap is not used here for readability purposes.
         common.db.collection('app_users' + request.params.app_id).update({'_id': request.params.app_user_id}, {'$set': {'sd': 0}}, {'upsert': true});
     }
 
-    function processUserSession(dbAppUser, request) {
-        var updateSessions = {},
+    function processUserSession(request) {
+        var dbAppUser = request.user,
+            updateSessions = {},
             updateUsers = {},
             updateLocations = {},
             updateCities = {},
@@ -148,7 +147,7 @@ var usage = {},
         }
 
         if (dbAppUser) {
-            var userLastSeenTimestamp = dbAppUser[common.dbUserMap['last_seen']],
+            var userLastSeenTimestamp = dbAppUser[common.dbUserMap['last_seen']] || 0,
                 currDate = common.getDate(request.params.time.timestamp, request.params.appTimezone),
                 userLastSeenDate = common.getDate(userLastSeenTimestamp, request.params.appTimezone),
                 secInMin = (60 * (currDate.getMinutes())) + currDate.getSeconds(),
@@ -221,7 +220,7 @@ var usage = {},
             if (uniqueLevels.length != 0) {
                 userRanges['meta.' + 'f-ranges'] = calculatedFrequency;
                 userRanges['meta.' + 'l-ranges'] = calculatedLoyaltyRange;
-                common.db.collection('users').update({'_id': request.params.app_id}, {'$inc': updateUsers, '$addToSet': userRanges}, {'upsert': true});
+                dims.updateAppIdWithDimensions(request, 'users', request.params.app_id, {'$inc': updateUsers, '$addToSet': userRanges}, {upsert: true});
             }
         } else {
             isNewUser = true;
@@ -247,14 +246,14 @@ var usage = {},
             common.fillTimeObject(request, updateUsers, common.dbMap['loyalty'] + '.' + calculatedLoyaltyRange);
             userRanges['meta.' + 'l-ranges'] = calculatedLoyaltyRange;
 
-            common.db.collection('users').update({'_id': request.params.app_id}, {'$inc': updateUsers, '$addToSet': userRanges}, {'upsert': true});
+            dims.updateAppIdWithDimensions(request, 'users', request.params.app_id, {'$inc': updateUsers, '$addToSet': userRanges}, {upsert: true});
         }
 
-        common.db.collection('sessions').update({'_id': request.params.app_id}, {'$inc': updateSessions}, {'upsert': true});
-        common.db.collection('locations').update({'_id': request.params.app_id}, {'$inc': updateLocations, '$addToSet': {'meta.countries': request.params.user.country}}, {'upsert': true});
+        dims.updateAppIdWithDimensions(request, 'sessions', request.params.app_id, {'$inc': updateSessions}, {upsert: true});
+        dims.updateAppIdWithDimensions(request, 'locations', request.params.app_id, {'$inc': updateLocations, '$addToSet': {'meta.countries': request.params.user.country}}, {upsert: true});
 
         if (request.config.city_data === true && request.params.app_cc == request.params.user.country) {
-            common.db.collection('cities').update({'_id': request.params.app_id}, {'$inc': updateCities, '$set': {'country': request.params.user.country}, '$addToSet': {'meta.cities': request.params.user.city}}, {'upsert': true});
+            dims.updateAppIdWithDimensions(request, 'cities', request.params.app_id, {'$inc': updateCities, '$set': {'country': request.params.user.country}, '$addToSet': {'meta.cities': request.params.user.city}}, {upsert: true});
         }
 
         processMetrics(dbAppUser, uniqueLevels, request);
@@ -339,7 +338,7 @@ var usage = {},
             }
 
             if (needsUpdate) {
-                common.db.collection(predefinedMetrics[i].db).update({'_id': request.params.app_id}, {'$inc': tmpTimeObj, '$addToSet': tmpSet}, {'upsert': true});
+                dims.updateAppIdWithDimensions(request, predefinedMetrics[i].db, request.params.app_id, {'$inc': tmpTimeObj, '$addToSet': tmpSet}, {upsert: true});
             }
         }
 

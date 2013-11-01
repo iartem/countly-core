@@ -33,7 +33,8 @@ var common = {},
         'country_code': 'cc',
         'platform': 'p',
         'platform_version': 'pv',
-        'app_version': 'av'
+        'app_version': 'av',
+        'dimensions': 'dm'
     };
 
     var connectionString = (typeof countlyConfig.mongodb === "string")? countlyConfig.mongodb : (countlyConfig.mongodb.host + ':' + countlyConfig.mongodb.port + '/' + countlyConfig.mongodb.db + '?auto_reconnect=true');

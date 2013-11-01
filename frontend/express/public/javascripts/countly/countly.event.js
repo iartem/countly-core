@@ -15,7 +15,7 @@
 
     //Public Methods
     countlyEvent.initialize = function(eventChanged) {
-        if (!eventChanged && _initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY) {
+        if (!eventChanged && _initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY && countlyCommon.canRefresh(_activeEvents)) {
             return countlyEvent.refresh();
         }
 
@@ -32,7 +32,8 @@
                     data: {
                         "api_key": countlyGlobal.member.api_key,
                         "app_id" : countlyCommon.ACTIVE_APP_ID,
-                        "method" : "get_events"
+                        "method" : "get_events",
+                        "dimensions": countlyCommon.serializeActiveDimensions()
                     },
                     dataType: "jsonp",
                     success: function(json) {
@@ -49,7 +50,8 @@
                         "api_key": countlyGlobal.member.api_key,
                         "app_id" : countlyCommon.ACTIVE_APP_ID,
                         "method" : "events",
-                        "event": _activeEvent
+                        "event": _activeEvent,
+                        "dimensions": countlyCommon.serializeActiveDimensions()
                     },
                     dataType: "jsonp",
                     success: function(json) {
@@ -80,6 +82,10 @@
                 return countlyEvent.initialize();
             }
 
+            if (!countlyCommon.canRefresh(_activeEvents)) {
+                return countlyEvent.initialize();
+            }
+
             return $.when(
                 $.ajax({
                     type: "GET",
@@ -87,7 +93,8 @@
                     data: {
                         "api_key": countlyGlobal.member.api_key,
                         "app_id" : countlyCommon.ACTIVE_APP_ID,
-                        "method" : "get_events"
+                        "method" : "get_events",
+                        "dimensions": countlyCommon.serializeActiveDimensions()
                     },
                     dataType: "jsonp",
                     success: function(json) {
@@ -105,7 +112,8 @@
                         "app_id" : countlyCommon.ACTIVE_APP_ID,
                         "method" : "events",
                         "action" : "refresh",
-                        "event": _activeEvent
+                        "event": _activeEvent,
+                        "dimensions": countlyCommon.serializeActiveDimensions()
                     },
                     dataType: "jsonp",
                     success: function(json) {
@@ -157,7 +165,8 @@
                 data:{
                     "api_key": countlyGlobal.member.api_key,
                     "app_id": countlyCommon.ACTIVE_APP_ID,
-                    "method":"get_events"
+                    "method":"get_events",
+                    "dimensions": countlyCommon.serializeActiveDimensions()
                 },
                 dataType:"jsonp",
                 success:function (json) {

@@ -6,6 +6,7 @@
     // Public Properties
     countlyCommon.ACTIVE_APP_KEY = 0;
     countlyCommon.ACTIVE_APP_ID = 0;
+    countlyCommon.ACTIVE_APP_DIMENSIONS = []; // multiple values means OR
     countlyCommon.BROWSER_LANG = jQuery.i18n.browserLang();
     countlyCommon.BROWSER_LANG_SHORT = jQuery.i18n.browserLang().split("-")[0];
     countlyCommon.HELP_MAP = {};
@@ -24,6 +25,13 @@
         countlyCommon.BROWSER_LANG = lang;
     }
 
+    if (store.get("countly_active_dimensions")) {
+        if (countlyCommon.ACTIVE_APP_ID) {
+            var dm = JSON.parse(store.get("countly_active_dimensions"));
+            if (dm && dm.app_id == countlyCommon.ACTIVE_APP_ID) countlyCommon.ACTIVE_APP_DIMENSIONS = dm.dimensions;
+        }
+    }
+
     // Public Methods
 
     countlyCommon.setPeriod = function (period) {
@@ -40,6 +48,136 @@
         countlyCommon.ACTIVE_APP_KEY = countlyGlobal['apps'][appId].key;
         countlyCommon.ACTIVE_APP_ID = appId;
         store.set("countly_active_app", appId);
+    };
+
+    countlyCommon.resetActiveDimensions = function() {
+        if (countlyCommon.DIMENSION_FIX) {
+            var app = countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID],
+                dim;
+            if (!app.dimensions || !app.dimensions.length) dim = countlyCommon.ACTIVE_APP_ID;
+            else {
+                var keys = [], values = [];
+                for (var k in countlyCommon.DIMENSION_FIX) keys.push(k) && values.push(countlyCommon.DIMENSION_FIX[k]);
+                if (keys.length) dim = countlyCommon.findDimension(keys, values);
+            }
+
+            if (dim) {
+                countlyCommon.setActiveDimensions([dim]);
+                return;
+            }
+        }
+
+        countlyCommon.setActiveDimensions([]);
+    };
+
+    countlyCommon.setActiveDimensions = function(dimensions) {
+        if (dimensions && dimensions.length) {
+            countlyCommon.ACTIVE_APP_DIMENSIONS = dimensions;
+            store.set("countly_active_dimensions", JSON.stringify({
+                app_id: countlyCommon.ACTIVE_APP_ID,
+                dimensions: dimensions
+            }));
+        } else {
+            countlyCommon.ACTIVE_APP_DIMENSIONS = [];
+            store.remove("countly_active_dimensions");
+        }
+    };
+
+    // Do not pass whole objects, just their IDs
+    countlyCommon.serializeActiveDimensions = function() {
+        if (!countlyCommon.ACTIVE_APP_DIMENSIONS) return undefined;
+        else {
+            var arr = [];
+            for (var i = 0; i < countlyCommon.ACTIVE_APP_DIMENSIONS.length; i++) arr.push(countlyCommon.ACTIVE_APP_DIMENSIONS[i].id)
+            return arr.join('|');
+        }
+    };
+
+    // Can we make refresh instead of initialize request?
+    // We can't if dimension has been changed.
+    countlyCommon.canRefresh = function(dbObj) {
+        if (!dbObj || !dbObj._id) return false;
+
+        var app = countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID],
+            activeDimension = countlyCommon.serializeActiveDimensions(),
+            dimensionObj = false;
+
+        if (app.dimensions) {
+            for (var i = 0; i < app.dimensions.length; i++) {
+                if (dbObj._id.indexOf(app.dimensions[i].id) !== -1) dimensionObj = true;
+            }
+            return dimensionObj || activeDimension ? activeDimension == dbObj._id : true;
+        } return true;
+    };
+
+    // Find any expansions of currently active dimension
+    // That is if active one is {a: 1}, we need to know that there are
+    // dimensions like {a: 1, b: 2}, {a: 1, c: 3} to show them in selects
+    countlyCommon.dimensionsValues = function(dimension) {
+        var values = [],
+            arr = countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID].dimensions;
+
+        // Filter dimensions which are narrower that 'dimension'
+        if (dimension) {
+            var filterKeys = Object.keys(dimension).length - 1;
+            arr = arr.filter(function(d){
+                var keysInDimension = 0, keysEqual = 0;
+                for (var k in d) if (k != 'id') {
+                    keysInDimension++;
+                    for (var key in dimension) if (key != 'id') {
+                        if (k == key && d[k] == dimension[key]) keysEqual++;
+                    }
+                }
+                return filterKeys == keysEqual && keysInDimension > keysEqual;
+            });
+        }
+
+        // Collect dimension keys & values into more comfortable form like {key: 'a', values: [1, 2, 3]}
+        if (arr.length){
+            for (var i = 0; i < arr.length; i++){
+                for (var k in arr[i]) if (k != 'id') {
+                    var obj = null;
+                    for (var j = 0; j < values.length; j++) if (values[j].key == k) obj = values[j];
+                    if (!obj) {
+                        obj = {
+                            key: k,
+                            values: []
+                        };
+                        values.push(obj);
+                    }
+                    if (obj.values.indexOf(arr[i][k]) === -1) obj.values.push(arr[i][k]);
+                }
+            }
+        } else { // only one dimension left
+            for (var k in dimension) if (k != 'id') {
+                values.push({
+                    key: k,
+                    values: [dimension[k]]
+                });
+            }
+        }
+
+        return values.sort(function(a, b){
+            return a.key > b.key ? 1 : -1;
+        });
+    };
+
+    // Find a dimension that has exactly this set of keys and values
+    countlyCommon.findDimension = function(keys, values) {
+        var arr = countlyGlobal['apps'][countlyCommon.ACTIVE_APP_ID].dimensions;
+        if (!arr) return undefined;
+        else {
+            for (var i = 0; i < arr.length; i++){
+                var keysInDimension = 0, keysEqual = 0;
+                for (var ak in arr[i]) if (ak != 'id') {
+                    keysInDimension++;
+                    var index = keys.indexOf(ak);
+                    if (index !== -1 && (!values || (values[index] == arr[i][ak]))) keysEqual++;
+                }
+                if (keysInDimension == keys.length && keysEqual == keys.length) return arr[i]
+            }
+        }
+        return undefined;
     };
 
     // Calculates the percent change between previous and current values.
@@ -946,6 +1084,13 @@
     // Function for merging updateObj object to dbObj.
     // Used for merging the received data for today to the existing data while updating the dashboard.
     countlyCommon.extendDbObj = function (dbObj, updateObj) {
+        // Simply overwrite all properties if dimension has been changed
+        if (dbObj._id != updateObj._id) {
+            for (var k in dbObj) delete dbObj[k];
+            for (var k in updateObj) { dbObj[k] = updateObj[k]; }
+            return;
+        }
+
         var now = moment(),
             year = now.year(),
             month = (now.month() + 1),

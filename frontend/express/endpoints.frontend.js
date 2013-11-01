@@ -50,6 +50,14 @@ function sortBy(arrayToSort, sortList) {
     return retArr;
 }
 
+function appDimensions(arr){
+    if (!arr) return undefined;
+    for (var i = 0; i < arr.length; i++){
+        arr[i].id = "" + arr[i].id;
+    }
+    return arr;
+}
+
 var auth = express.basicAuth(function(user, pass, callback) {
     var password = sha1Hash(pass);
     countlyDb.collection('members').findOne({"username":user, "password":password}, function (err, member) {
@@ -147,6 +155,8 @@ module.exports = function(countlyDb, countlyConfig, params) {
                                     res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
 
                                     delete member["password"];
+
+                                    for (var k in countlyGlobalApps) if (countlyGlobalApps[k].dimensions) countlyGlobalApps[k].dimensions = appDimensions(countlyGlobalApps[k].dimensions);
 
                                     res.expose({
                                         apps:countlyGlobalApps,

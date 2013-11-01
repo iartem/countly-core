@@ -11,7 +11,7 @@
 
     //Public Methods
     countlyDeviceDetails.initialize = function () {
-        if (_initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY) {
+        if (_initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY && countlyCommon.canRefresh(_deviceDetailsDb)) {
             return countlyDeviceDetails.refresh();
         }
 
@@ -25,7 +25,8 @@
                 data:{
                     "api_key":countlyGlobal.member.api_key,
                     "app_id":countlyCommon.ACTIVE_APP_ID,
-                    "method":"device_details"
+                    "method":"device_details",
+                    "dimensions": countlyCommon.serializeActiveDimensions()
                 },
                 dataType:"jsonp",
                 success:function (json) {
@@ -49,6 +50,10 @@
                 return countlyDeviceDetails.initialize();
             }
 
+            if (!countlyCommon.canRefresh(_deviceDetailsDb)) {
+                return countlyDeviceDetails.initialize();
+            }
+
             return $.ajax({
                 type:"GET",
                 url:countlyCommon.API_PARTS.data.r,
@@ -56,7 +61,8 @@
                     "api_key":countlyGlobal.member.api_key,
                     "app_id":countlyCommon.ACTIVE_APP_ID,
                     "method":"device_details",
-                    "action":"refresh"
+                    "action":"refresh",
+                    "dimensions": countlyCommon.serializeActiveDimensions()
                 },
                 dataType:"jsonp",
                 success:function (json) {

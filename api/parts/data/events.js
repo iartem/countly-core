@@ -1,4 +1,5 @@
 var events = {},
+    dims = require('./dimensions.js'),
     common = require('./../../utils/common.js'),
     async = require('./../../utils/async.min.js');
 
@@ -132,13 +133,12 @@ var events = {},
             for (var collection in eventCollections) {
                 for (var segment in eventCollections[collection]) {
                     if (segment == "no-segment" && eventSegments[collection]) {
-                        common.db.collection(collection).update({'_id': segment}, {'$inc': eventCollections[collection][segment], '$addToSet': eventSegments[collection]}, {'upsert': true});
+                        dims.updateEventsWithDimensions(request, collection, segment, {'$inc': eventCollections[collection][segment], '$addToSet': eventSegments[collection]}, {'upsert': true}, clb);
                     } else {
-                        common.db.collection(collection).update({'_id': segment}, {'$inc': eventCollections[collection][segment]}, {'upsert': true});
+                        dims.updateEventsWithDimensions(request, collection, segment, {'$inc': eventCollections[collection][segment]}, {'upsert': true}, clb);
                     }
                 }
             }
-            clb();
         } else {
             var eventDocs = [];
 
@@ -169,7 +169,7 @@ var events = {},
 
             function updateEventDb(eventDoc, callback) {
                 if (eventDoc.s == "no-segment" && eventSegments[eventDoc.c]) {
-                    common.db.collection(eventDoc.c).update({'_id': eventDoc.s}, {'$inc': eventCollections[eventDoc.c][eventDoc.s], '$addToSet': eventSegments[eventDoc.c]}, {'upsert': true, 'safe': true}, function(err, result) {
+                    dims.updateEventsWithDimensions(request, eventDoc.c, eventDoc.s, {'$inc': eventCollections[eventDoc.c][eventDoc.s], '$addToSet': eventSegments[collection]}, {'upsert': true}, function(err, result) {
                         if (err || result != 1) {
                             callback(false, {status: "failed", obj: eventDoc});
                         } else {
@@ -177,7 +177,7 @@ var events = {},
                         }
                     });
                 } else {
-                    common.db.collection(eventDoc.c).update({'_id': eventDoc.s}, {'$inc': eventCollections[eventDoc.c][eventDoc.s]}, {'upsert': true, 'safe': true}, function(err, result) {
+                    dims.updateEventsWithDimensions(request, eventDoc.c, eventDoc.s, {'$inc': eventCollections[eventDoc.c][eventDoc.s]}, {'upsert': true, 'safe': true}, function(err, result) {
                         if (err || result != 1) {
                             callback(false, {status: "failed", obj: eventDoc});
                         } else {
@@ -222,7 +222,7 @@ var events = {},
                 }
             }
 
-            common.db.collection('events').update({'_id': request.params.app_id}, eventSegmentList, {'upsert': true}, function(err, res){});
+            dims.updateEventsWithDimensions(request, 'events', request.params.app_id, eventSegmentList, {'upsert': true});
         }
     };
 
