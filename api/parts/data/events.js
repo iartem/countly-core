@@ -170,7 +170,7 @@ var events = {},
             function updateEventDb(eventDoc, callback) {
                 if (eventDoc.s == "no-segment" && eventSegments[eventDoc.c]) {
                     dims.updateEventsWithDimensions(request, eventDoc.c, eventDoc.s, {'$inc': eventCollections[eventDoc.c][eventDoc.s], '$addToSet': eventSegments[collection]}, {'upsert': true}, function(err, result) {
-                        if (err || result != 1) {
+                        if (err) {
                             callback(false, {status: "failed", obj: eventDoc});
                         } else {
                             callback(false, {status: "ok", obj: eventDoc});
@@ -178,7 +178,7 @@ var events = {},
                     });
                 } else {
                     dims.updateEventsWithDimensions(request, eventDoc.c, eventDoc.s, {'$inc': eventCollections[eventDoc.c][eventDoc.s]}, {'upsert': true, 'safe': true}, function(err, result) {
-                        if (err || result != 1) {
+                        if (err) {
                             callback(false, {status: "failed", obj: eventDoc});
                         } else {
                             callback(false, {status: "ok", obj: eventDoc});
