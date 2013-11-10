@@ -289,7 +289,7 @@ var http = require('http'),
 
         if (onStart) onStart();
 
-        console.log('Server started');
+        common.log('SERVER').log('started');
     };
 }(CountlyServer));
 

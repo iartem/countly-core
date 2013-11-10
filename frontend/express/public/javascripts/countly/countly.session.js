@@ -10,8 +10,8 @@
     countlySession.additionalRequestAttrs = {};
 
     //Public Methods
-    countlySession.initialize = function () {
-        if (_initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY && countlyCommon.canRefresh(_sessionDb)) {
+    countlySession.initialize = function (noRefresh) {
+        if (!noRefresh && _initialized && _activeAppKey == countlyCommon.ACTIVE_APP_KEY && countlyCommon.canRefresh(_sessionDb)) {
             return countlySession.refresh();
         }
 

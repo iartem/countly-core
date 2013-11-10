@@ -169,6 +169,27 @@ var common = {},
         return tmpDate;
     };
 
+    function logWrapper(name, log) {
+        return function() {
+            var array = Array.prototype.slice.call(arguments, 0);
+            if (array.length) array[0] = name + ': ' + array[0];
+            log.apply(common, array);
+        }
+    }
+
+    if (!common.config.logLevel) common.config.logLevel = 'error';
+    var logs = {};
+    common.log = function(name) {
+        if (!(name in logs)) logs[name] = {
+            error: logWrapper(name, ['info', 'warn', 'error'].indexOf(common.config.logLevel) !== -1 ? console.error : function(){}),
+            warn: logWrapper(name, ['info', 'warn'].indexOf(common.config.logLevel) !== -1 ? console.warn : function(){}),
+            info: logWrapper(name, ['info'].indexOf(common.config.logLevel) !== -1 ? console.info : function(){}),
+            log: logWrapper(name, ['info'].indexOf(common.config.logLevel) !== -1 ? console.info : function(){})
+        };
+        return logs[name];
+    };
+
+
 }(common));
 
 module.exports = common;
